@@ -1,6 +1,7 @@
 import discord
 import os
 from discord.ext import commands
+from discord import app_commands
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,6 +19,9 @@ bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 
 # Set to store whitelisted user IDs
 whitelist = set()
+
+# Track channel to send in
+target_channel_id = None
 
 known_difficulties = {
     'easy': 1256313207925243924,
@@ -41,49 +45,73 @@ known_difficulties = {
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user.name}")
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} command(s)")
+    except Exception as e:
+        print(e)
 
 # Command: Add Completion
-@bot.command(name='addcompletion')
-async def add_completion(ctx, username, tower_name, difficulty, time):
+@bot.tree.command(name='addcompletion')
+@app_commands.describe(username="Roblox username", tower_name="Name of the tower", difficulty="Tower difficulty", time="Completion time")
+async def add_completion(interaction: discord.Interaction, username: str, tower_name: str, difficulty: str, time: str):
     # Check if user is in whitelist
-    if ctx.author.id not in whitelist:
-        await ctx.send("You are not authorized to use this command.")
+    if interaction.user.id not in whitelist:
+        await interaction.response.send_message("You are not authorized to use this command.", ephemeral=True)
+        return
+    
+    # Check if target channel is defined
+    if target_channel_id is None:
+        await interaction.response.send_message("Before recording completions, set the target tracking channel with `!setchannel`", ephemeral=True)
         return
 
     if difficulty.lower() in known_difficulties:
-        message = f"{username} has beaten {tower_name} [<:{difficulty}:{known_difficulties.get(difficulty)}>] in {time}"
+        message = f"{username} has beaten {tower_name} [<:{difficulty.lower()}:{known_difficulties.get(difficulty.lower())}>] in {time}"
     else:
         message = f"{username} has beaten {tower_name} [:unknown:] in {time}"
-    await ctx.send(message)
+        
+    await interaction.response.send_message("Completion successfully recorded in tracking channel.", ephemeral=True)
+    
+    await bot.get_channel(target_channel_id).send(message)
+    
+# Command: Channel Management
+@bot.tree.command(name='setchannel')
+@app_commands.describe(channel="Target channel to track completions in")
+async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    global target_channel_id
+    target_channel_id = channel.id
+    await interaction.response.send_message(f"Target channel has been set to: {channel.name} ({channel.id})", ephemeral=True)
+    
 
 # Command: Whitelist Management
-@bot.command(name='whitelist')
-async def whitelist_management(ctx, action, user: discord.Member = None):
+@bot.tree.command(name='whitelist')
+@app_commands.describe(user="User to manage whitelist permissions for")
+async def whitelist_management(interaction: discord.Interaction, action: str, user: discord.Member = None):
     if action == 'add':
         if user:
             whitelist.add(user.id)
-            await ctx.send(f"{user.display_name} has been added to the whitelist.")
+            await interaction.response.send_message(f"{user.display_name} has been added to the whitelist.", ephemeral=True)
         else:
-            await ctx.send("Please mention a user to add to the whitelist.")
+            await interaction.response.send_message("Please mention a user to add to the whitelist.", ephemeral=True)
     elif action == 'remove':
         if user:
             if user.id in whitelist:
                 whitelist.remove(user.id)
-                await ctx.send(f"{user.display_name} has been removed from the whitelist.")
+                await interaction.response.send_message(f"{user.display_name} has been removed from the whitelist.", ephemeral=True)
             else:
-                await ctx.send(f"{user.display_name} is not in the whitelist.")
+                await interaction.response.send_message(f"{user.display_name} is not in the whitelist.", ephemeral=True)
         else:
-            await ctx.send("Please mention a user to remove from the whitelist.")
+            await interaction.response.send_message("Please mention a user to remove from the whitelist.", ephemeral=True)
     elif action == 'list':
         if whitelist:
-            await ctx.send("Whitelisted users:")
+            await interaction.response.send_message("Whitelisted users:", ephemeral=True)
             for user_id in whitelist:
                 user = bot.get_user(user_id)
                 if user:
-                    await ctx.send(f"- {user.name}#{user.discriminator}")
+                    await interaction.response.send_message(f"- {user.name}#{user.discriminator}", ephemeral=True)
         else:
-            await ctx.send("No users are currently whitelisted.")
+            await interaction.response.send_message("No users are currently whitelisted.", ephemeral=True)
     else:
-        await ctx.send("Invalid action. Use `add`, `remove`, or `list`.")
+        await interaction.response.send_message("Invalid action. Use `add`, `remove`, or `list`.", ephemeral=True)
 
 bot.run(TOKEN)
