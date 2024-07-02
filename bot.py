@@ -17,6 +17,8 @@ intents.message_content = True  # Enable message content intent
 # Initialize bot with intents and command prefix
 bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 
+WHITELIST_MANAGER_ROLE_NAME = "jtoh-bot whitelist manager"
+
 # Set to store whitelisted user IDs
 whitelist = set()
 
@@ -87,13 +89,21 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
 @bot.tree.command(name='whitelist')
 @app_commands.describe(user="User to manage whitelist permissions for")
 async def whitelist_management(interaction: discord.Interaction, action: str, user: discord.Member = None):
+    whitelist_management_role = discord.utils.get(interaction.user.roles, name=WHITELIST_MANAGER_ROLE_NAME)
+    user_is_admin = any(role.permissions.administrator for role in interaction.user.roles)
     if action == 'add':
+        if whitelist_management_role not in interaction.user.roles and not user_is_admin:
+            await interaction.response.send_message("You do not have the required role to manage the jtoh-bot witelist.")
+            return
         if user:
             whitelist.add(user.id)
             await interaction.response.send_message(f"{user.display_name} has been added to the whitelist.", ephemeral=True)
         else:
             await interaction.response.send_message("Please mention a user to add to the whitelist.", ephemeral=True)
     elif action == 'remove':
+        if whitelist_management_role not in interaction.user.roles and not user_is_admin:
+            await interaction.response.send_message("You do not have the required role to manage the jtoh-bot witelist.")
+            return
         if user:
             if user.id in whitelist:
                 whitelist.remove(user.id)
