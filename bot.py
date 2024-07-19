@@ -40,7 +40,8 @@ known_difficulties = {
     'horrific': 1256313451568042004, 
     'unreal': 1256313466944356402, 
     'nil': 1256313482576396399,
-    'unknown' :1256349546515140778,
+    'unknown' : 1256349546515140778,
+    'toohard' : 1263241992616542218,
     }
 
 # Event: Bot is ready
@@ -68,9 +69,9 @@ async def add_completion(interaction: discord.Interaction, username: str, tower_
         return
 
     if difficulty.lower() in known_difficulties:
-        message = f"{username} has beaten {tower_name} [<:{difficulty.lower()}:{known_difficulties.get(difficulty.lower())}>] in {time}"
+        message = f"{username} has beaten {tower_name} [<:{difficulty.lower()}:{known_difficulties.get(''.join(c for c in difficulty.lower() if c.isalpha()))}>] in {time}"
     else:
-        message = f"{username} has beaten {tower_name} [:unknown:] in {time}"
+        message = f"{username} has beaten {tower_name} [<:unknown:1256349546515140778>] in {time}"
         
     await interaction.response.send_message("Completion successfully recorded in tracking channel.", ephemeral=True)
     
