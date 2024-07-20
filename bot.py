@@ -67,11 +67,13 @@ async def add_completion(interaction: discord.Interaction, username: str, tower_
     if target_channel_id is None:
         await interaction.response.send_message("Before recording completions, set the target tracking channel with `!setchannel`", ephemeral=True)
         return
+    
+    filtered_difficulty = ''.join(c for c in difficulty.lower() if c.isalpha())
 
-    if difficulty.lower() in known_difficulties:
-        message = f"{username} has beaten {tower_name} [<:{difficulty.lower()}:{known_difficulties.get(''.join(c for c in difficulty.lower() if c.isalpha()))}>] in {time}"
+    if filtered_difficulty in known_difficulties:
+        message = f"{username} has beaten {tower_name} [<:{filtered_difficulty}:{known_difficulties.get(filtered_difficulty)}>] in {time}"
     else:
-        message = f"{username} has beaten {tower_name} [<:unknown:1256349546515140778>] in {time}"
+        message = f"{username} has beaten {tower_name} [<:unknown:{known_difficulties.get('unknown')}>] in {time}"
         
     await interaction.response.send_message("Completion successfully recorded in tracking channel.", ephemeral=True)
     
